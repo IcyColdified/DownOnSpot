@@ -826,7 +826,7 @@ dependencies = [
 
 [[package]]
 name = "down_on_spot"
-version = "0.2.6"
+version = "0.3.0"
 dependencies = [
  "aspotify",
  "async-std",
