@@ -7,7 +7,7 @@ panic = "abort"
 
 [package]
 name = "down_on_spot"
-version = "0.2.6"
+version = "0.3.0"
 edition = "2021"
 authors = ["exttex", "oSumAtrIX"]
 build = "build.rs"
