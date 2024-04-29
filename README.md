@@ -32,6 +32,7 @@ If you want to help me accelerate this process, please feel free to contact me a
 - ✅ Search for tracks
 - ✅ Download MP3 and original OGG files
 - ✅ Metadata tagging
+- ✅ Download synced lyrics as LRC files
 - ✅ Simple CLI interface
 
 > [!NOTE]
