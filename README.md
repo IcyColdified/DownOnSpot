@@ -111,7 +111,7 @@ You can use the following template variables for `path` and `filename_template` 
 - %title%
 - %track%
 
-###   Getting sp_dc for LRC downloads
+### 📃 Getting sp_dc for LRC downloads
 
 If you enabled `download_lrc`, you must set set `lrc_sp_dc` to let DownOnSpot to fetch lyrics from Spotify.
 
