@@ -8,8 +8,11 @@ use librespot::core::audio_key::AudioKey;
 use librespot::core::session::Session;
 use librespot::core::spotify_id::SpotifyId;
 use librespot::metadata::{FileFormat, Metadata, Track};
+use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, AUTHORIZATION, USER_AGENT};
+use reqwest::StatusCode;
 use sanitize_filename::sanitize;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use tokio::fs::File;
@@ -358,15 +361,15 @@ impl DownloaderInternal {
 			filename_template = filename_template.replace(tag, &value);
 			path_template = path_template.replace(tag, &value);
 		}
-		let path = Path::new(&path_template).join(&filename_template);
+		let path_stem = Path::new(&path_template).join(&filename_template);
 
-		tokio::fs::create_dir_all(path.parent().unwrap()).await?;
+		tokio::fs::create_dir_all(path_stem.parent().unwrap()).await?;
 
 		// Download
 		let (path, format) = DownloaderInternal::download_track(
 			&self.spotify.session,
 			&job.track_id,
-			path,
+			&path_stem,
 			config.clone(),
 			self.event_tx.clone(),
 			job.id,
@@ -413,6 +416,12 @@ impl DownloaderInternal {
 			(Field::Label, vec![album.label.to_string()]),
 		];
 		let date = album.release_date;
+
+		// Download LRC
+		if config.download_lrc {
+			DownloaderInternal::download_lrc(path_stem, &job.track_id, &config.lrc_sp_dc).await?;
+		}
+
 		// Write tags
 		let config = config.clone();
 		tokio::task::spawn_blocking(move || {
@@ -440,6 +449,92 @@ impl DownloaderInternal {
 			.to_string();
 		let data = res.bytes().await?.to_vec();
 		Ok((mime, data))
+	}
+
+	// Download synced or unsynced lyrics and return as LRC format
+	async fn download_lrc(
+		path: impl AsRef<Path>,
+		track_id: &str,
+		sp_dc: &str,
+	) -> Result<(), SpotifyError> {
+		let url = format!(
+			"https://spclient.wg.spotify.com/color-lyrics/v2/track/{}",
+			track_id
+		);
+
+		let client = reqwest::Client::new();
+		let token_res = client
+			.get("https://open.spotify.com/get_access_token?reason=transport&productType=web_player")
+			.header(ACCEPT, "application/json")
+			.header(USER_AGENT, "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36")
+			.header("Cookie", format!("sp_dc={}", sp_dc))
+			.send()
+			.await?;
+
+		if token_res.status() != StatusCode::OK {
+			return Err(SpotifyError::Error(format!(
+				"Failed to get token! {}",
+				token_res.status(),
+			)));
+		}
+
+		let token_json: Value = serde_json::from_str(&token_res.text().await?).unwrap();
+		let token = token_json["accessToken"].as_str().unwrap();
+
+		// Fetch the lyrics using the auth token
+		let res = client
+			.get(&url)
+			.header(ACCEPT_LANGUAGE, "en")
+			.header(ACCEPT, "application/json")
+			.header("app-platform", "WebPlayer")
+			.header(AUTHORIZATION, format!("Bearer {}", token))
+			.send()
+			.await?;
+
+		if res.status() == StatusCode::NOT_FOUND {
+			warn!("Lyrics not found! {}", res.status());
+		} else if res.status() != StatusCode::OK {
+			return Err(SpotifyError::Error(format!(
+				"Failed to fetch lyrics! {}",
+				res.status()
+			)));
+		}
+
+		let lyric_json: Value = serde_json::from_str(&res.text().await?).unwrap();
+		let lyrics = lyric_json["lyrics"]["lines"].as_array().unwrap();
+
+		// Convert response JSON to LRC
+		let mut lrc_text = String::new();
+		if lyric_json["lyrics"]["syncType"].as_str().unwrap() == "LINE_SYNCED" {
+			for line in lyrics {
+				let ts = line["startTimeMs"]
+					.as_str()
+					.unwrap()
+					.parse::<u64>()
+					.unwrap();
+				let ts_minutes = ts / 60000;
+				let ts_seconds = (ts % 60000) / 1000;
+				let ts_milliseconds = ts % 1000;
+
+				let words = line["words"].as_str().unwrap();
+				lrc_text.push_str(&format!(
+					"[{:02}:{:02}:{:03}]{}\n",
+					ts_minutes, ts_seconds, ts_milliseconds, words
+				))
+			}
+		} else if lyric_json["lyrics"]["syncType"].as_str().unwrap() == "UNSYNCED" {
+			for line in lyrics {
+				let words = line["words"].as_str().unwrap();
+				lrc_text.push_str(&format!("{}\n", words));
+			}
+		}
+
+		// Save LRC to path_stem + ".lrc"
+		let path = format!("{}.lrc", path.as_ref().to_str().unwrap());
+		let mut file = File::create(&path).await?;
+		file.write_all(lrc_text.as_bytes()).await?;
+
+		Ok(())
 	}
 
 	/// Write tags to file ( BLOCKING )
@@ -870,6 +965,8 @@ pub struct DownloaderConfig {
 	pub convert_to_mp3: bool,
 	pub separator: String,
 	pub skip_existing: bool,
+	pub download_lrc: bool,
+	pub lrc_sp_dc: String,
 }
 
 impl DownloaderConfig {
@@ -884,6 +981,8 @@ impl DownloaderConfig {
 			convert_to_mp3: false,
 			separator: ", ".to_string(),
 			skip_existing: true,
+			download_lrc: false,
+			lrc_sp_dc: "github.com/akashrchandran/syrics/wiki/Finding-sp_dc".to_string(),
 		}
 	}
 }
