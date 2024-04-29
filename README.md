@@ -111,6 +111,13 @@ You can use the following template variables for `path` and `filename_template` 
 - %title%
 - %track%
 
+###   Getting sp_dc for LRC downloads
+
+If you enabled `download_lrc`, you must set set `lrc_sp_dc` to let DownOnSpot to fetch lyrics from Spotify.
+
+See [this page](https://github.com/akashrchandran/syrics/wiki/Finding-sp_dc) to find out how you can obtain your `sp_dc`.
+
+
 ## 🧭 Additional scripts
 
 - [Userscript to download titles from YouTube](https://gist.github.com/oSumAtrIX/6abf46e2ea25d32f4e6608c3c3cf837e)
