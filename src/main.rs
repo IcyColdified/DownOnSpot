@@ -14,7 +14,6 @@ use async_std::task;
 use colored::Colorize;
 use downloader::{DownloadState, Downloader};
 use error::SpotifyError;
-use librespot::core::spotify_id::SpotifyIdResult;
 use settings::Settings;
 use spotify::Spotify;
 use std::time::{Duration, Instant};

@@ -91,26 +91,26 @@ impl Spotify {
             "track" => {
                 let track = self
                     .spotify
-                    .track(TrackId::from_id(id).unwrap(), self.market)
+                    .track(TrackId::from_id(id)?, self.market)
                     .await?;
                 Ok(SpotifyItem::Track(track))
             }
             "playlist" => {
                 let playlist = self
                     .spotify
-                    .playlist(PlaylistId::from_id(id).unwrap(), None, self.market)
+                    .playlist(PlaylistId::from_id(id)?, None, self.market)
                     .await?;
                 Ok(SpotifyItem::Playlist(playlist))
             }
             "album" => {
                 let album = self
                     .spotify
-                    .album(AlbumId::from_id(id).unwrap(), self.market)
+                    .album(AlbumId::from_id(id)?, self.market)
                     .await?;
                 Ok(SpotifyItem::Album(album))
             }
             "artist" => {
-                let artist = self.spotify.artist(ArtistId::from_id(id).unwrap()).await?;
+                let artist = self.spotify.artist(ArtistId::from_id(id)?).await?;
                 Ok(SpotifyItem::Artist(artist))
             }
             // Unsupported / Unimplemented

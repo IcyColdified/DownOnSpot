@@ -412,7 +412,10 @@ impl DownloaderInternal {
             (Field::TrackNumber, vec![track.track_number.to_string()]),
             (Field::DiscNumber, vec![track.disc_number.to_string()]),
             (Field::Genre, album.genres.clone()),
-            (Field::Label, vec![album.label.unwrap().to_string()]),
+            (
+                Field::Label,
+                vec![album.label.unwrap_or("".to_string()).to_string()],
+            ),
         ];
         let date = album.release_date;
         // Write tags
@@ -726,7 +729,12 @@ impl From<FileFormat> for AudioFormat {
             FileFormat::MP3_160_ENC => Self::Mp3,
             FileFormat::AAC_24 => Self::Aac,
             FileFormat::AAC_48 => Self::Aac,
+            FileFormat::AAC_160 => Self::Aac,
+            FileFormat::AAC_320 => Self::Aac,
             FileFormat::FLAC_FLAC => Self::Flac,
+            FileFormat::MP4_128 => Self::Mp4,
+            FileFormat::OTHER5 => Self::Unknown,
+            FileFormat::UNKNOWN_FORMAT => Self::Unknown,
         }
     }
 }

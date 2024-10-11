@@ -146,3 +146,9 @@ impl From<lewton::VorbisError> for SpotifyError {
         SpotifyError::Error(format!("Lewton: {}", e))
     }
 }
+
+impl From<rspotify::model::IdError> for SpotifyError {
+    fn from(e: rspotify::model::IdError) -> Self {
+        Self::Error(format!("{}", e))
+    }
+}
