@@ -15,8 +15,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use tokio::time::sleep;
 
 use crate::converter::AudioConverter;
 use crate::error::SpotifyError;
@@ -567,7 +569,14 @@ impl DownloaderInternal {
 
         let path_clone = path.clone();
 
-        let key = session.audio_key().request(track.id, *file_id).await?;
+        let key = loop {
+            match session.audio_key().request(track.id, *file_id).await {
+                Ok(k) => break k,
+                Err(_) => {
+                    sleep(Duration::from_secs(30)).await;
+                }
+            }
+        };
         let encrypted = AudioFile::open(session, *file_id, 1024 * 1024).await?;
         let size = encrypted.get_stream_loader_controller()?.len();
         // Download
